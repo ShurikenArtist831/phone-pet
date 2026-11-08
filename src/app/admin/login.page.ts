@@ -1,18 +1,23 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { adminError, AdminApiService } from './admin-api.service';
 
 @Component({
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './admin.css',
   template: `
     <main class="login-page">
       <section class="card login-card" aria-labelledby="login-heading">
-        <p class="brand">乎乎 Vibe</p>
-        <h1 id="login-heading">管理员登录</h1>
+        <header class="page-header">
+          <div>
+            <p class="brand">乎乎 Vibe</p>
+            <h1 id="login-heading">管理员登录</h1>
+          </div>
+          <a class="button-link" routerLink="/control">返回宠物</a>
+        </header>
         <form class="form" (ngSubmit)="submit()">
           <label for="username">管理员账号</label>
           <input id="username" name="username" autocomplete="username" [(ngModel)]="username"

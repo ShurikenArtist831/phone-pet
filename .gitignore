@@ -5,6 +5,7 @@
 /.wrangler
 .dev.vars*
 .env*
+*.p8
 /tmp
 /out-tsc
 /bazel-out

@@ -15,6 +15,8 @@ npm start
 
 本地管理员账号配置在项目根目录的 `.dev.vars`。用 `node scripts/admin-password-hash.mjs` 生成哈希，然后在文件中分别设置 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD_HASH`，保存后重启 `npm start`。该文件已被 Git 忽略。
 
+灵动岛 Live Activity 的 Viewer API、Swift 数据契约、APNs Mock 和手动部署步骤见 [Live Activity 后端](docs/live-activity.md)。
+
 ## Code scaffolding
 
 Angular CLI includes powerful code scaffolding tools. To generate a new component, run:

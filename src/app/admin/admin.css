@@ -35,7 +35,7 @@ h2 { margin: 0; font-size: 17px; overflow-wrap: anywhere; }
 .form label:not(:first-child) { margin-top: 4px; }
 .form > .primary { margin-top: 4px; }
 
-input, select, button {
+input, select, button, .button-link {
   min-height: 44px;
   padding: 8px 12px;
   border: 1px solid #d8e3d9;
@@ -44,17 +44,24 @@ input, select, button {
   color: inherit;
   font: inherit;
 }
+textarea { width: 100%; min-height: 76px; padding: 10px 12px; border: 1px solid #d8e3d9; border-radius: 10px; background: #f7faf6; color: inherit; font: 13px/1.5 ui-monospace, monospace; overflow-wrap: anywhere; resize: vertical; }
 
 input, select { width: 100%; min-width: 0; }
-button { cursor: pointer; font-weight: 650; white-space: nowrap; }
+button, .button-link { cursor: pointer; font-weight: 650; white-space: nowrap; }
+.button-link { display: inline-flex; align-items: center; text-decoration: none; }
 button:disabled { opacity: .55; cursor: default; }
-:is(input, select, button):focus-visible { outline: 2px solid #56815f; outline-offset: 2px; }
+:is(input, select, button, .button-link):focus-visible { outline: 2px solid #56815f; outline-offset: 2px; }
 .primary, [aria-pressed='true'] { background: #dcecd9; border-color: #bed8bf; }
 .danger { color: #8c3736; border-color: #e5c5bf; background: #fff2ee; }
 .page-header, .toolbar, .device-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .toolbar { margin: 20px 0 12px; flex-wrap: wrap; }
 .field-row, .filters, .actions { display: flex; align-items: center; gap: 8px; }
 .actions { margin-top: 10px; flex-wrap: wrap; }
+.token-result { display: grid; gap: 8px; margin-top: 16px; }
+.token-result label { font-size: 14px; font-weight: 650; }
+.widget-steps { padding-left: 20px; }
+.widget-section { margin-top: 24px; }
+.widget-section > h2 { margin-bottom: 8px; }
 .devices { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 12px; }
 .badge { padding: 5px 8px; border-radius: 12px; background: #e9f2e4; color: #44624a; font-size: 12px; white-space: nowrap; }
 .badge.revoked { background: #f5eae6; color: #795451; }

@@ -1,0 +1,2 @@
+HUHU_APNS_ENVIRONMENT = production
+#include? "Local.xcconfig"

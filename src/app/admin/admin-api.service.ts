@@ -24,6 +24,16 @@ export interface AdminPairings {
   pets: AdminPet[];
 }
 
+export interface AdminWidgetToken {
+  id: string;
+  petId: string;
+  petName: string;
+  viewerDeviceId: string;
+  viewerName: string | null;
+  createdAt: string;
+  revokedAt: string | null;
+}
+
 export function adminError(error: unknown, fallback: string): string {
   if (error instanceof HttpErrorResponse && typeof error.error?.error === 'string') {
     return error.error.error;
@@ -49,6 +59,20 @@ export class AdminApiService {
 
   list(): Promise<AdminPairings> {
     return firstValueFrom(this.http.get<AdminPairings>('/api/admin/pairings'));
+  }
+
+  listWidgets(): Promise<{ widgets: AdminWidgetToken[] }> {
+    return firstValueFrom(this.http.get<{ widgets: AdminWidgetToken[] }>('/api/admin/widgets'));
+  }
+
+  createWidget(petId: string): Promise<{ widget: AdminWidgetToken & { token: string } }> {
+    return firstValueFrom(this.http.post<{ widget: AdminWidgetToken & { token: string } }>(
+      '/api/admin/widgets', { petId },
+    ));
+  }
+
+  revokeWidget(id: string): Promise<unknown> {
+    return firstValueFrom(this.http.delete(`/api/admin/widgets/${encodeURIComponent(id)}`));
   }
 
   invite(petId: string): Promise<{ path: string; expiresAt: string }> {

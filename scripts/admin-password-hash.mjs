@@ -35,8 +35,8 @@ input.on('SIGINT', () => {
 
 try {
   const password = await prompt('输入管理员密码（输入隐藏）：');
-  if ([...password].length < 16 || Buffer.byteLength(password) > 512) {
-    throw new Error('密码至少需要 16 个字符，且不能超过 512 字节。');
+  if ([...password].length < 5 || Buffer.byteLength(password) > 512) {
+    throw new Error('密码至少需要 5 个字符，且不能超过 512 字节。');
   }
   if (password !== await prompt('再次输入密码（输入隐藏）：')) {
     throw new Error('两次输入的密码不一致。');

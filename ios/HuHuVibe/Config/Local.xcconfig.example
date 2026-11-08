@@ -1,0 +1,5 @@
+// Production HTTPS Worker hostname only, without https:// or a trailing slash.
+HUHU_API_HOST =
+// The explicit App ID registered with Apple, without the team prefix.
+HUHU_BUNDLE_ID =
+DEVELOPMENT_TEAM =

@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "npm run build && wrangler d1 migrations apply DB --local && wrangler dev --local --log-level error",
     "build": "ng build",
+    "check": "npm run check:worker",
     "check:worker": "tsc --noEmit -p tsconfig.worker.json",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

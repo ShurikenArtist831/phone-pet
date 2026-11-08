@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { adminError, AdminApiService } from './admin-api.service';
-import type { AdminDevice, AdminPairings } from './admin-api.service';
+import type { AdminDevice, AdminPairings, AdminWidgetToken } from './admin-api.service';
 
 @Component({
   standalone: true,
@@ -25,6 +25,9 @@ import type { AdminDevice, AdminPairings } from './admin-api.service';
         </div>
         <button class="primary" type="button" [disabled]="busy() || !data()" (click)="toggleInvite()">
           {{ showInvite() ? '关闭邀请' : '新增配对' }}
+        </button>
+        <button type="button" [disabled]="busy() || !data()" (click)="toggleWidget()">
+          {{ showWidget() ? '关闭小组件' : '创建桌面小组件' }}
         </button>
       </div>
 
@@ -52,6 +55,61 @@ import type { AdminDevice, AdminPairings } from './admin-api.service';
               <button type="button" (click)="copyLink(url)">复制链接</button>
             </div>
           }
+        </section>
+      }
+
+      @if (showWidget()) {
+        <section class="card" aria-labelledby="widget-heading">
+          <h2 id="widget-heading">创建桌面小组件</h2>
+          @if (widgetPets().length) {
+            <form class="form" (ngSubmit)="createWidget()">
+              <label for="widget-pet">选择已配对的宠物</label>
+              <select id="widget-pet" name="widgetPet" [(ngModel)]="selectedWidgetPet" [disabled]="busy()" required>
+                <option value="">请选择宠物</option>
+                @for (pet of widgetPets(); track pet.id) {
+                  <option [value]="pet.id">{{ pet.name }} · {{ pet.id.slice(0, 8) }}</option>
+                }
+              </select>
+              <button class="primary" type="submit" [disabled]="busy() || !selectedWidgetPet">生成小组件凭证</button>
+            </form>
+          } @else {
+            <p class="hint">请先在这只宠物的 Viewer 手机上完成配对。</p>
+          }
+          @if (newWidgetToken(); as token) {
+            <div class="token-result">
+              <p class="hint">此 Token 只显示这一次。复制后请在 Scriptable 中配置，不要发给他人。</p>
+              <label for="widget-token">Widget Token</label>
+              <textarea id="widget-token" readonly rows="3" [value]="token"></textarea>
+              <div class="field-row">
+                <input aria-label="Widget API 地址" readonly [value]="widgetApiUrl()">
+                <button type="button" (click)="copyWidgetConfig()">复制配置</button>
+              </div>
+            </div>
+          }
+          <ol class="hint widget-steps">
+            <li>复制上方配置，在 Scriptable 中运行 HuHuWidget 脚本并按提示粘贴。</li>
+            <li>添加 Scriptable 桌面小组件，选择 HuHuWidget 脚本。</li>
+          </ol>
+        </section>
+      }
+
+      @if (widgets().length) {
+        <section class="widget-section" aria-labelledby="widgets-heading">
+          <h2 id="widgets-heading">桌面小组件凭证</h2>
+          <ul class="devices" aria-label="桌面小组件凭证">
+            @for (widget of widgets(); track widget.id) {
+              <li class="card device">
+                <div class="device-title">
+                  <h3>{{ widget.petName }} · {{ widget.viewerName || '展示设备' }}</h3>
+                  <span class="badge" [class.revoked]="widget.revokedAt">{{ widget.revokedAt ? '已撤销' : '已授权' }}</span>
+                </div>
+                <dl><div><dt>创建时间</dt><dd>{{ widget.createdAt | date:'yyyy-MM-dd HH:mm' }}</dd></div></dl>
+                @if (!widget.revokedAt) {
+                  <div class="actions"><button class="danger" type="button" [disabled]="busy()" (click)="revokeWidget(widget)">撤销小组件</button></div>
+                }
+              </li>
+            }
+          </ul>
         </section>
       }
 
@@ -142,6 +200,19 @@ export class AdminPairingsPage {
     const revoked = this.showRevoked();
     return this.data()?.devices.filter((device) => Boolean(device.revokedAt) === revoked) ?? [];
   });
+  protected readonly widgets = signal<AdminWidgetToken[]>([]);
+  protected readonly showWidget = signal(false);
+  protected readonly newWidgetToken = signal('');
+  protected selectedWidgetPet = '';
+  protected readonly widgetApiUrl = signal('');
+  protected readonly widgetPets = computed(() => {
+    const data = this.data();
+    if (!data) return [];
+    const activeViewers = new Set(data.devices
+      .filter((device) => device.role === 'viewer' && !device.revokedAt)
+      .map((device) => device.petId));
+    return data.pets.filter((pet) => activeViewers.has(pet.id));
+  });
 
   protected readonly availablePets = computed(() => {
     const data = this.data();
@@ -161,7 +232,45 @@ export class AdminPairingsPage {
   }
 
   private async refresh(): Promise<void> {
-    this.data.set(await this.api.list());
+    const [pairings, widgets] = await Promise.all([this.api.list(), this.api.listWidgets()]);
+    this.data.set(pairings);
+    this.widgets.set(widgets.widgets);
+  }
+
+  protected toggleWidget(): void {
+    this.showWidget.update((visible) => !visible);
+    this.newWidgetToken.set('');
+    this.selectedWidgetPet = '';
+  }
+
+  protected createWidget(): Promise<void> {
+    return this.run(async () => {
+      this.newWidgetToken.set('');
+      const { widget } = await this.api.createWidget(this.selectedWidgetPet);
+      this.newWidgetToken.set(widget.token);
+      this.widgetApiUrl.set(`${location.origin}/api/widget/state`);
+      this.notice.set('小组件凭证已生成，请立即复制并配置');
+      await this.refresh();
+    });
+  }
+
+  protected async copyWidgetConfig(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(`${this.widgetApiUrl()}\n${this.newWidgetToken()}`);
+      this.notice.set('配置已复制，请粘贴到 Scriptable');
+    } catch {
+      this.notice.set('复制失败，请分别复制接口地址和 Token');
+    }
+  }
+
+  protected revokeWidget(widget: AdminWidgetToken): void {
+    if (!window.confirm('确定撤销这个桌面小组件吗？撤销后它将无法读取乎乎状态。')) return;
+    void this.run(async () => {
+      await this.api.revokeWidget(widget.id);
+      this.newWidgetToken.set('');
+      this.notice.set('小组件凭证已撤销');
+      await this.refresh();
+    });
   }
 
   protected toggleInvite(): void {

@@ -1,11 +1,13 @@
 import { isPetState } from '../src/app/pet-state';
-import type { DeviceRole, PetSnapshot } from '../src/app/pet-state';
+import type { PetSnapshot } from '../src/app/pet-state';
 import { adminApi } from './admin';
 import type { AdminEnv } from './admin';
 import { createInvite } from './invites';
+import { liveActivityApi, pushLiveActivity } from './live-activities';
+import type { AuthenticatedDevice, LiveActivityEnv } from './live-activities';
 import { error, hashToken, json, newToken, readBody, tokenPattern } from './shared';
 
-interface Env extends AdminEnv {
+interface Env extends AdminEnv, LiveActivityEnv {
   ASSETS: Fetcher;
 }
 
@@ -71,8 +73,30 @@ async function claimInvite(db: D1Database, request: Request): Promise<Response> 
   return json({ pet, device: { petId: pet.id, role: 'viewer', token: deviceToken } }, 201);
 }
 
-async function api(request: Request, db: D1Database, path: string): Promise<Response> {
+async function api(request: Request, env: Env, ctx: ExecutionContext, path: string): Promise<Response> {
+  const db = env.DB;
   const method = request.method;
+  if (path === '/api/widget/state') {
+    if (method !== 'GET') return error(405, '不支持此请求方式');
+    const token = /^Bearer ([a-f0-9]{64})$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
+    if (!token) return error(401, '缺少有效的小组件凭证');
+    const widget = await db.prepare(`
+      SELECT p.name AS petName, p.state, p.version, p.updated_at AS updatedAt
+      FROM widget_tokens w
+      JOIN pets p ON p.id = w.pet_id
+      JOIN devices d ON d.id = w.viewer_device_id AND d.pet_id = w.pet_id
+      WHERE w.token_hash = ? AND w.revoked_at IS NULL
+        AND d.role = 'viewer' AND d.revoked_at IS NULL
+    `).bind(await hashToken(token)).first<{
+      petName: string; state: string; version: number; updatedAt: string;
+    }>();
+    if (!widget) return error(401, '小组件凭证无效或已撤销');
+    const imageName = widget.state === 'sleeping' ? 'sleep' : widget.state;
+    return json({
+      ...widget,
+      imageUrl: new URL(`/images/penguin-${imageName}.png`, request.url).href,
+    });
+  }
   if (path === '/api/pets') {
     return method === 'POST' ? createPet(db) : error(405, '不支持此请求方式');
   }
@@ -80,17 +104,21 @@ async function api(request: Request, db: D1Database, path: string): Promise<Resp
     return method === 'POST' ? claimInvite(db, request) : error(405, '不支持此请求方式');
   }
 
-  const route = /^\/api\/pets\/([^/]+)(?:\/(state|invites))?$/.exec(path);
-  if (!route) return error(404, '接口不存在');
-  const [, petId, action] = route;
-  const expectedMethod = action === 'state' ? 'PATCH' : action === 'invites' ? 'POST' : 'GET';
+  const petRoute = /^\/api\/pets\/([^/]+)(?:\/(state|invites))?$/.exec(path);
+  const liveAction = path === '/api/live-activities/register' ? 'register'
+    : path === '/api/live-activities/end' ? 'end' : null;
+  if (!petRoute && !liveAction) return error(404, '接口不存在');
+  const action = petRoute?.[2];
+  const expectedMethod = action === 'state' ? 'PATCH' : action === 'invites' || liveAction ? 'POST' : 'GET';
   if (method !== expectedMethod) return error(405, '不支持此请求方式');
 
   const token = /^Bearer ([a-f0-9]{64})$/i.exec(request.headers.get('Authorization') ?? '')?.[1];
   if (!token) return error(401, '缺少有效的设备凭证');
-  const device = await db.prepare('SELECT pet_id, role FROM devices WHERE token_hash = ? AND revoked_at IS NULL')
-    .bind(await hashToken(token)).first<{ pet_id: string; role: DeviceRole }>();
+  const device = await db.prepare('SELECT id, pet_id, role FROM devices WHERE token_hash = ? AND revoked_at IS NULL')
+    .bind(await hashToken(token)).first<AuthenticatedDevice>();
   if (!device) return error(401, '设备凭证已失效');
+  if (liveAction) return liveActivityApi(request, env, device, liveAction);
+  const petId = petRoute![1];
   if (device.pet_id !== petId || (action && device.role !== 'controller')) {
     return error(403, '此设备没有操作权限');
   }
@@ -104,7 +132,9 @@ async function api(request: Request, db: D1Database, path: string): Promise<Resp
       WHERE id = ?
       RETURNING id, name, state, version
     `).bind(state, petId).first<PetSnapshot>();
-    return pet ? json(pet) : error(404, '找不到乎乎');
+    if (!pet) return error(404, '找不到乎乎');
+    ctx.waitUntil(pushLiveActivity(env, pet));
+    return json(pet);
   }
 
   const pet = await findPet(db, petId);
@@ -113,14 +143,14 @@ async function api(request: Request, db: D1Database, path: string): Promise<Resp
 }
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     const path = new URL(request.url).pathname;
     if (path !== '/api' && !path.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
       if (path === '/api/admin' || path.startsWith('/api/admin/')) {
         return await adminApi(request, env, path.replace(/\/$/, ''));
       }
-      return await api(request, env.DB, path);
+      return await api(request, env, ctx, path);
     } catch {
       return error(500, '服务暂时不可用，请稍后再试');
     }

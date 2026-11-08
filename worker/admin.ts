@@ -151,6 +151,55 @@ async function revokePairing(db: D1Database, deviceId: string): Promise<Response
   return updated.meta.changes ? json({ ok: true }) : pairingUnavailable(db, deviceId);
 }
 
+async function listWidgetTokens(db: D1Database): Promise<Response> {
+  const result = await db.prepare(`
+    SELECT w.id, w.pet_id AS petId, p.name AS petName,
+      w.viewer_device_id AS viewerDeviceId, d.display_name AS viewerName,
+      w.created_at AS createdAt, w.revoked_at AS revokedAt
+    FROM widget_tokens w
+    JOIN pets p ON p.id = w.pet_id
+    JOIN devices d ON d.id = w.viewer_device_id
+    ORDER BY w.created_at DESC, w.id
+  `).all();
+  return json({ widgets: result.results });
+}
+
+async function createWidgetToken(db: D1Database, petId: string): Promise<Response> {
+  if (!uuid.test(petId)) return error(400, '请选择有效的宠物');
+  const petExists = await db.prepare('SELECT id FROM pets WHERE id = ?').bind(petId).first();
+  if (!petExists) return error(404, '找不到这只宠物');
+
+  const id = crypto.randomUUID();
+  const token = newToken();
+  const [, selected] = await db.batch([
+    db.prepare(`
+      INSERT INTO widget_tokens (id, pet_id, viewer_device_id, token_hash)
+      SELECT ?, d.pet_id, d.id, ? FROM devices d
+      WHERE d.pet_id = ? AND d.role = 'viewer' AND d.revoked_at IS NULL
+    `).bind(id, await hashToken(token), petId),
+    db.prepare(`
+      SELECT w.id, w.pet_id AS petId, p.name AS petName, w.created_at AS createdAt
+      FROM widget_tokens w JOIN pets p ON p.id = w.pet_id WHERE w.id = ?
+    `).bind(id),
+  ]);
+  const widget = selected.results[0] as {
+    id: string; petId: string; petName: string; createdAt: string;
+  } | undefined;
+  if (!widget) return error(409, '请先为这只宠物配对展示设备');
+  return json({ widget: { ...widget, token } }, 201);
+}
+
+async function revokeWidgetToken(db: D1Database, id: string): Promise<Response> {
+  if (!uuid.test(id)) return error(400, '请选择有效的小组件凭证');
+  const result = await db.prepare(`
+    UPDATE widget_tokens SET revoked_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE id = ? AND revoked_at IS NULL
+  `).bind(id).run();
+  if (result.meta.changes) return json({ ok: true });
+  const existing = await db.prepare('SELECT id FROM widget_tokens WHERE id = ?').bind(id).first();
+  return existing ? json({ ok: true }) : error(404, '找不到这个小组件凭证');
+}
+
 export async function adminApi(request: Request, env: AdminEnv, path: string): Promise<Response> {
   const { method } = request;
   const db = env.DB;
@@ -178,6 +227,14 @@ export async function adminApi(request: Request, env: AdminEnv, path: string): P
   }
   if (path === '/api/admin/session' && method === 'GET') return json({ authenticated: true });
   if (path === '/api/admin/pairings' && method === 'GET') return listPairings(db);
+  if (path === '/api/admin/widgets' && method === 'GET') return listWidgetTokens(db);
+  if (path === '/api/admin/widgets' && method === 'POST') {
+    const { petId } = await readBody(request);
+    if (typeof petId !== 'string') return error(400, '请选择有效的宠物');
+    return createWidgetToken(db, petId);
+  }
+  const widgetPath = /^\/api\/admin\/widgets\/([^/]+)$/.exec(path);
+  if (widgetPath && method === 'DELETE') return revokeWidgetToken(db, widgetPath[1]);
   if (path === '/api/admin/pairings/invites' && method === 'POST') {
     const { petId } = await readBody(request);
     if (typeof petId !== 'string' || !uuid.test(petId)) return error(400, '请选择有效的宠物');
