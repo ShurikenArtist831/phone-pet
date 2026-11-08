@@ -1,0 +1,4 @@
+* { box-sizing: border-box; }
+html, body { min-height: 100%; margin: 0; }
+body { font-family: Inter, ui-rounded, "Segoe UI", "Noto Sans SC", sans-serif; -webkit-font-smoothing: antialiased; }
+button { -webkit-tap-highlight-color: transparent; }
