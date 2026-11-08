@@ -1,16 +1,18 @@
-# HuHu vibe
+# 乎乎 Vide
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.6.
 
-## Development server
+## 本地运行
 
-To start a local development server, run:
+在项目目录执行以下命令，初始化本地数据库并启动同时提供页面和接口的 Worker。
 
 ```bash
-ng serve
+npm ci
+npx wrangler d1 migrations apply DB --local
+npm start
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+打开 Wrangler 输出的地址，在 `/control` 创建乎乎，再用邀请链接打开 `/viewer`。
 
 ## Code scaffolding
 

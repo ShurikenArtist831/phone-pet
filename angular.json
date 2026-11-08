@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "huhu-vibe": {
+    "huhu-vide": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -56,10 +56,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "huhu-vibe:build:production"
+              "buildTarget": "huhu-vide:build:production"
             },
             "development": {
-              "buildTarget": "huhu-vibe:build:development"
+              "buildTarget": "huhu-vide:build:development"
             }
           },
           "defaultConfiguration": "development"
