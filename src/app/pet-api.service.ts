@@ -1,6 +1,12 @@
 import { Injectable } from '@angular/core';
 import type { DeviceCredential, DeviceRole, PairingResult, PetSnapshot, PetState } from './pet-state';
 
+export class PetApiError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class PetApiService {
   getDevice(role: DeviceRole): DeviceCredential | null {
@@ -84,7 +90,7 @@ export class PetApiService {
       throw new Error('无法连接乎乎服务，请稍后再试');
     }
     if (!response.ok) {
-      throw new Error(typeof data?.error === 'string' ? data.error : '请求失败，请稍后再试');
+      throw new PetApiError(response.status, typeof data?.error === 'string' ? data.error : '请求失败，请稍后再试');
     }
     return data as T;
   }

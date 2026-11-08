@@ -1,18 +1,19 @@
-# 乎乎 Vide
+# 乎乎 Vibe
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.6.
 
 ## 本地运行
 
-在项目目录执行以下命令，初始化本地数据库并启动同时提供页面和接口的 Worker。
+在项目目录运行以下命令。启动脚本会自动应用本地 D1 迁移，再用同一个 Worker 提供页面和 API。
 
 ```bash
 npm ci
-npx wrangler d1 migrations apply DB --local
 npm start
 ```
 
-打开 Wrangler 输出的地址，在 `/control` 创建乎乎，再用邀请链接打开 `/viewer`。
+打开 [本地控制页](http://localhost:8787/control)，创建乎乎并用邀请链接配对。右上角「管理员登录」通往 `/admin/login`。
+
+本地管理员账号配置在项目根目录的 `.dev.vars`。用 `node scripts/admin-password-hash.mjs` 生成哈希，然后在文件中分别设置 `ADMIN_USERNAME` 和 `ADMIN_PASSWORD_HASH`，保存后重启 `npm start`。该文件已被 Git 忽略。
 
 ## Code scaffolding
 

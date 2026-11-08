@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "npm run build && wrangler dev --log-level error",
+    "start": "npm run build && wrangler d1 migrations apply DB --local && wrangler dev --local --log-level error",
     "build": "ng build",
     "check:worker": "tsc --noEmit -p tsconfig.worker.json",
     "watch": "ng build --watch --configuration development",

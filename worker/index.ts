@@ -1,44 +1,12 @@
 import { isPetState } from '../src/app/pet-state';
 import type { DeviceRole, PetSnapshot } from '../src/app/pet-state';
+import { adminApi } from './admin';
+import type { AdminEnv } from './admin';
+import { createInvite } from './invites';
+import { error, hashToken, json, newToken, readBody, tokenPattern } from './shared';
 
-interface Env {
-  DB: D1Database;
+interface Env extends AdminEnv {
   ASSETS: Fetcher;
-}
-
-const tokenPattern = /^[a-f0-9]{64}$/;
-
-function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
-function newToken(): string {
-  return toHex(crypto.getRandomValues(new Uint8Array(32)));
-}
-
-async function hashToken(token: string): Promise<string> {
-  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
-  return toHex(new Uint8Array(hash));
-}
-
-function json(data: unknown, status = 200): Response {
-  return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
-}
-
-function error(status: number, message: string): Response {
-  return json({ error: message }, status);
-}
-
-async function readBody(request: Request): Promise<Record<string, unknown>> {
-  try {
-    const body: unknown = await request.json();
-    if (body && typeof body === 'object' && !Array.isArray(body)) {
-      return body as Record<string, unknown>;
-    }
-  } catch {
-    // Invalid JSON is handled by the endpoint's field validation.
-  }
-  return {};
 }
 
 function findPet(db: D1Database, petId: string): Promise<PetSnapshot | null> {
@@ -56,21 +24,6 @@ async function createPet(db: D1Database): Promise<Response> {
       .bind(crypto.randomUUID(), pet.id, await hashToken(token)),
   ]);
   return json({ pet, device: { petId: pet.id, role: 'controller', token } }, 201);
-}
-
-async function createInvite(db: D1Database, petId: string): Promise<Response> {
-  const token = newToken();
-  const invite = await db.prepare(`
-    INSERT INTO invites (id, pet_id, token_hash, expires_at)
-    SELECT ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+10 minutes')
-    WHERE NOT EXISTS (
-      SELECT 1 FROM devices WHERE pet_id = ? AND role = 'viewer' AND revoked_at IS NULL
-    )
-    RETURNING expires_at
-  `).bind(crypto.randomUUID(), petId, await hashToken(token), petId).first<{ expires_at: string }>();
-
-  if (!invite) return error(409, '乎乎已经配对了一台展示设备');
-  return json({ path: `/join/${token}`, expiresAt: invite.expires_at }, 201);
 }
 
 async function claimInvite(db: D1Database, request: Request): Promise<Response> {
@@ -164,6 +117,9 @@ export default {
     const path = new URL(request.url).pathname;
     if (path !== '/api' && !path.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
+      if (path === '/api/admin' || path.startsWith('/api/admin/')) {
+        return await adminApi(request, env, path.replace(/\/$/, ''));
+      }
       return await api(request, env.DB, path);
     } catch {
       return error(500, '服务暂时不可用，请稍后再试');

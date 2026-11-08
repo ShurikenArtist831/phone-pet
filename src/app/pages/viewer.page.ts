@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, inject, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
-import { PetApiService } from '../pet-api.service';
+import { PetApiError, PetApiService } from '../pet-api.service';
 import { petCopy } from '../pet-state';
 import type { PetSnapshot } from '../pet-state';
 import { PenguinComponent } from '../components/penguin.component';
@@ -50,6 +50,7 @@ export class ViewerPage {
   private readonly document = inject(DOCUMENT);
   private timer?: ReturnType<typeof setInterval>;
   private request?: AbortController;
+  private accessRevoked = false;
   protected readonly device = this.api.getDevice('viewer');
   protected readonly pet = signal<PetSnapshot | null>(null);
   protected readonly error = signal('');
@@ -63,7 +64,7 @@ export class ViewerPage {
   @HostListener('document:visibilitychange')
   protected visibilityChanged(): void {
     this.stopPolling();
-    if (this.document.hidden || !this.device) return;
+    if (this.document.hidden || !this.device || this.accessRevoked) return;
     void this.refresh();
     this.timer = setInterval(() => void this.refresh(), 3000);
   }
@@ -85,7 +86,13 @@ export class ViewerPage {
       if (next.version !== this.pet()?.version) this.pet.set(next);
       this.error.set('');
     } catch (error) {
-      if (!request.signal.aborted) {
+      if (request.signal.aborted) return;
+      if (error instanceof PetApiError && (error.status === 401 || error.status === 403)) {
+        this.accessRevoked = true;
+        this.stopPolling();
+        this.pet.set(null);
+        this.error.set('展示设备的授权已失效，请打开新的邀请链接。');
+      } else {
         this.error.set(error instanceof Error ? error.message : '更新失败，稍后会重试');
       }
     } finally {

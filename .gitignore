@@ -3,6 +3,8 @@
 # Compiled output
 /dist
 /.wrangler
+.dev.vars*
+.env*
 /tmp
 /out-tsc
 /bazel-out

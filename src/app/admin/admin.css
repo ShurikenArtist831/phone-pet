@@ -1,0 +1,71 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+  background: #f5f7f2;
+  color: #293a3c;
+}
+
+.login-page {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 20px;
+}
+
+.pairings-page {
+  max-width: 740px;
+  margin: auto;
+  padding: 24px 16px 40px;
+}
+
+.card, dialog {
+  padding: 18px;
+  border: 1px solid #e1e9df;
+  border-radius: 18px;
+  background: #fffefa;
+  box-shadow: 0 8px 24px #3346380a;
+}
+
+.login-card { width: min(100%, 400px); padding: 24px; }
+.brand { margin: 0 0 4px; color: #526f5e; font-size: 14px; font-weight: 700; }
+h1 { margin: 0; font-size: 25px; }
+h2 { margin: 0; font-size: 17px; overflow-wrap: anywhere; }
+.form { display: grid; gap: 8px; margin-top: 16px; }
+.form label { font-size: 14px; font-weight: 650; }
+.form label:not(:first-child) { margin-top: 4px; }
+.form > .primary { margin-top: 4px; }
+
+input, select, button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #d8e3d9;
+  border-radius: 10px;
+  background: #fffefa;
+  color: inherit;
+  font: inherit;
+}
+
+input, select { width: 100%; min-width: 0; }
+button { cursor: pointer; font-weight: 650; white-space: nowrap; }
+button:disabled { opacity: .55; cursor: default; }
+:is(input, select, button):focus-visible { outline: 2px solid #56815f; outline-offset: 2px; }
+.primary, [aria-pressed='true'] { background: #dcecd9; border-color: #bed8bf; }
+.danger { color: #8c3736; border-color: #e5c5bf; background: #fff2ee; }
+.page-header, .toolbar, .device-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.toolbar { margin: 20px 0 12px; flex-wrap: wrap; }
+.field-row, .filters, .actions { display: flex; align-items: center; gap: 8px; }
+.actions { margin-top: 10px; flex-wrap: wrap; }
+.devices { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 12px; }
+.badge { padding: 5px 8px; border-radius: 12px; background: #e9f2e4; color: #44624a; font-size: 12px; white-space: nowrap; }
+.badge.revoked { background: #f5eae6; color: #795451; }
+dl { display: grid; gap: 6px; margin: 12px 0; font-size: 14px; }
+dl div { display: flex; gap: 10px; }
+dt { min-width: 4em; color: #576e61; }
+dd { margin: 0; overflow-wrap: anywhere; }
+.hint { color: #576e61; font-size: 13px; margin: 8px 0; }
+.error { color: #943a36; }
+.notice { color: #356244; }
+.error, .notice { margin: 10px 0; font-size: 14px; }
+.empty { text-align: center; color: #576e61; }
+dialog { width: min(calc(100% - 32px), 420px); color: inherit; }
+dialog::backdrop { background: #293a3c66; }
